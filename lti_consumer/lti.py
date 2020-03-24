@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 This module encapsulates code which implements the LTI specification.
 
@@ -8,6 +9,7 @@ https://www.imsglobal.org/activity/learning-tools-interoperability
 import logging
 import urllib
 import json
+import requests
 
 from six import text_type
 
@@ -149,6 +151,7 @@ class LtiConsumer(object):
         self.xblock.user_email = ""
         self.xblock.user_username = ""
         self.xblock.user_language = ""
+        user_id = 0
 
         # Username, email, and language can't be sent in studio mode, because the user object is not defined.
         # To test functionality test in LMS
@@ -157,6 +160,8 @@ class LtiConsumer(object):
             real_user_object = self.xblock.runtime.get_real_user(self.xblock.runtime.anonymous_student_id)
             self.xblock.user_email = getattr(real_user_object, "email", "")
             self.xblock.user_username = getattr(real_user_object, "username", "")
+            user_id = getattr(real_user_object, 'id', 0)
+            # self.xblock.user_id = getattr(real_user_object, 'id', 0)
             user_preferences = getattr(real_user_object, "preferences", None)
 
             if user_preferences is not None:
@@ -166,6 +171,11 @@ class LtiConsumer(object):
 
         if self.xblock.ask_to_send_username and self.xblock.user_username:
             lti_parameters["lis_person_sourcedid"] = self.xblock.user_username
+            fullname = self.get_full_name_from_sys(user_id)
+            if fullname is not None:
+                lti_parameters["lis_person_name_full"] = fullname
+            else:
+                lti_parameters["lis_person_name_full"] = self.xblock.user_username
         if self.xblock.ask_to_send_email and self.xblock.user_email:
             lti_parameters["lis_person_contact_email_primary"] = self.xblock.user_email
         if self.xblock.user_language:
@@ -197,6 +207,23 @@ class LtiConsumer(object):
         # Add LTI parameters to OAuth parameters for sending in form.
         lti_parameters.update(oauth_signature)
         return lti_parameters
+    
+    def get_full_name_from_sys(self, id):
+        """
+        for get full name to bbb live, you need
+        :param username:
+        :return:
+        """
+        url = "http://localhost:8000/api/v1/getfullnamefromusername/?id=" + str(id)
+        log.info('now student id' + str(self.xblock.runtime.anonymous_student_id))
+        log.info('now user id:' + str(id))
+        res = requests.get(url)
+        log.info(res.content)
+        content = json.loads(res.content)
+        if content['status'] == 10001:
+            return content['data']['fullname']
+        
+        return None
 
     def get_result(self, user):  # pylint: disable=unused-argument
         """

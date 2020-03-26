@@ -165,6 +165,7 @@ class LaunchTarget(object):
 
 @XBlock.needs('i18n')
 @XBlock.wants('lti-configuration')
+@XBlock.needs("user")
 class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
     """
     This XBlock provides an LTI consumer interface for integrating
